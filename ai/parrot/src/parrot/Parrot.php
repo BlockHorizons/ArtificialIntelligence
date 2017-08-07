@@ -4,7 +4,11 @@ declare(strict_types = 1);
 
 namespace parrot;
 
+use parrot\components\FeedableComponent;
+use parrot\components\TamableComponent;
+use parrot\interfaces\Feedable;
 use parrot\interfaces\Tamable;
+use pocketmine\entity\Effect;
 use pocketmine\entity\Entity;
 use pocketmine\entity\Living;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
@@ -15,7 +19,7 @@ use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\AddEntityPacket;
 use pocketmine\Player;
 
-class Parrot extends FlyingAnimal implements Tamable {
+class Parrot extends FlyingAnimal implements Tamable, Feedable {
 
 	const NETWORK_ID = 10; // Change this to parrot network ID (30) later in 1.2.
 
@@ -46,12 +50,19 @@ class Parrot extends FlyingAnimal implements Tamable {
 	private $isFlying = false;
 	/** @var null|Vector3 */
 	private $destination = null;
+	/** @var FeedableComponent */
+	private $feedableComponent = null;
+	/** @var TamableComponent */
+	private $tamableComponent = null;
 
 	public function initEntity() {
 		parent::initEntity();
 		$this->setMaxHealth(6);
 		$this->setHealth(6);
 		$this->directionFindTick = mt_rand(50, 100);
+
+		$this->feedableComponent = new FeedableComponent($this);
+		$this->tamableComponent = new TamableComponent($this);
 	}
 
 	public function attack($damage, EntityDamageEvent $source) {
@@ -128,7 +139,7 @@ class Parrot extends FlyingAnimal implements Tamable {
 				$this->yaw = rad2deg(atan2(-$x, $z));
 				$this->pitch = rad2deg(-atan2($y, sqrt($x * $x + $z * $z)));
 
-				if($this->isOnGround() || $distanceFlat <= 0.8) {
+				if($this->isOnGround() || $distanceFlat <= 0.3) {
 					$this->setFlying(false);
 					$this->motionX = 0;
 					$this->motionZ = 0;
@@ -318,5 +329,43 @@ class Parrot extends FlyingAnimal implements Tamable {
 		return [
 			Item::get(Item::FEATHER, 0, mt_rand(1, 2))
 		];
+	}
+
+	/**
+	 * @return Item
+	 */
+	public function getTamingItem(): Item {
+		return Item::get(Item::SEEDS);
+	}
+
+	/**
+	 * @return Item
+	 */
+	public function getFeedingItem(): Item {
+		return Item::get(Item::COOKIE);
+	}
+
+	/**
+	 * @return FeedableComponent
+	 */
+	public function getFeedableComponent(): FeedableComponent {
+		return $this->feedableComponent;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function onFeed(): bool {
+		$effect = Effect::getEffect(Effect::WITHER)->setVisible(false)->setAmplifier(0)->setDuration(INT32_MAX);
+		$effect->setColor(25, 155, 0);
+		$this->addEffect($effect);
+		return true;
+	}
+
+	/**
+	 * @return TamableComponent
+	 */
+	public function getTamableComponent(): TamableComponent {
+		return $this->tamableComponent;
 	}
 }
