@@ -356,7 +356,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 * @return bool
 	 */
 	public function onFeed(): bool {
-		$effect = Effect::getEffect(Effect::WITHER)->setVisible(false)->setAmplifier(0)->setDuration(INT32_MAX);
+		$effect = Effect::getEffect(Effect::WITHER)->setVisible(true)->setAmplifier(1)->setDuration(INT32_MAX);
 		$effect->setColor(25, 155, 0);
 		$this->addEffect($effect);
 		return true;

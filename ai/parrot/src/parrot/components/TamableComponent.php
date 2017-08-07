@@ -57,7 +57,7 @@ class TamableComponent extends EntityComponent {
 	public function canBeTamedWith(Item $item): bool {
 		/** @var Entity|Tamable $entity */
 		$entity = $this->getEntity();
-		return $item->getId() === $entity->getTamingItem()->getId() && $item->getDamage() === $entity->getTamingItem()->getDamage() && $item->getCount() <= $entity->getTamingItem()->getCount();
+		return $item->getId() === $entity->getTamingItem()->getId() && $item->getDamage() === $entity->getTamingItem()->getDamage() && $item->getCount() >= $entity->getTamingItem()->getCount();
 	}
 
 	/**

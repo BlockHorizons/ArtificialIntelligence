@@ -67,6 +67,6 @@ class FeedableComponent extends EntityComponent {
 	public function canBeFedWith(Item $item): bool {
 		/** @var Entity|Feedable $entity */
 		$entity = $this->getEntity();
-		return $item->getId() === $entity->getFeedingItem()->getId() && $item->getDamage() === $entity->getFeedingItem()->getDamage() && $item->getCount() <= $entity->getFeedingItem()->getCount();
+		return $item->getId() === $entity->getFeedingItem()->getId() && $item->getDamage() === $entity->getFeedingItem()->getDamage() && $item->getCount() >= $entity->getFeedingItem()->getCount();
 	}
 }
