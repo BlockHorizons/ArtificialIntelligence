@@ -65,6 +65,10 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 		$this->tamableComponent = new TamableComponent($this);
 	}
 
+	/**
+	 * @param float             $damage
+	 * @param EntityDamageEvent $source
+	 */
 	public function attack($damage, EntityDamageEvent $source) {
 		if($source->getCause() === $source::CAUSE_FALL) {
 			$source->setCancelled();
@@ -76,7 +80,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 		if($source instanceof EntityDamageByEntityEvent){
 			$source->setKnockback(0);
 			$this->motionX = $this->motionZ = 0;
-			$this->motionY = $this->gravity * $this->drag * 4;
+			$this->motionY = $this->gravity * 2;
 			$this->generateNewDirection();
 			$this->setFlying();
 		}
@@ -94,6 +98,18 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 		$hasUpdate = parent::entityBaseTick($tickDiff);
 
 		if($this->isAlive()) {
+			if($this->getTamableComponent()->hasValidUUID()) {
+				foreach($this->getLevel()->getServer()->getOnlinePlayers() as $player) {
+					if($player->getUniqueId()->equals($this->getTamableComponent()->getTamerUUID())) {
+						$this->getTamableComponent()->setOwningPlayer($player);
+					}
+				}
+			}
+			if($this->getOwningEntity() !== null) {
+				if(!$this->observedEntity instanceof Player) {
+					$this->observedEntity = $this->getOwningEntity();
+				}
+			}
 			if($this->isInAir() && !($this->isFlying())) {
 				if($this->isInsideOfWater()) {
 					$this->motionY += $this->gravity / 4 * $tickDiff;
@@ -109,9 +125,11 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 			} elseif($this->isFlying()) {
 				if($this->destination === null) {
 					$this->setFlying(false);
+					return true;
 				}
+
 				if($this->flyingTicks < 4) {
-					$this->motionY -= $this->gravity * $this->drag * 4 * $tickDiff;
+					$this->motionY -= $this->gravity * $this->drag * 5 * $tickDiff * $this->motionY;
 				}
 				$this->flyingTicks += $tickDiff;
 				$x = $this->x - $this->destination->x;
@@ -237,7 +255,11 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 */
 	public function flyTowards(Vector3 $vector3) {
 		$this->setFlying();
-		$this->destination = $vector3->add(lcg_value(), 0, lcg_value());
+		$degree = mt_rand(1, 360);
+
+		$x = (cos(deg2rad($degree)) * 2) + $vector3->x;
+		$z = (sin(deg2rad($degree)) * 2) + $vector3->z;
+		$this->destination = new Vector3($x, $vector3->y, $z);
 	}
 
 	/**
@@ -272,7 +294,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 		}
 		$this->directionFindTick = mt_rand(100, 400);
 		if($this->isObserving()) {
-			$this->directionFindTick = mt_rand(30, 50);
+			$this->directionFindTick = mt_rand(10, 30);
 		}
 		$flyDistance = 12;
 		$x = mt_rand(-12, 12);
