@@ -7,7 +7,6 @@ namespace parrot\components;
 use parrot\interfaces\Tamable;
 use pocketmine\entity\Entity;
 use pocketmine\item\Item;
-use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
 use pocketmine\Player;
 use pocketmine\utils\UUID;
@@ -22,8 +21,8 @@ class TamableComponent extends EntityComponent {
 	 */
 	public function __construct(Tamable $entity) {
 		parent::__construct($entity);
-		if(isset($entity->namedtag->OwnerUUID)) {
-			$this->ownerUUID = UUID::fromString($entity->namedtag->OwnerUUID->getValue());
+		if(isset($entity->namedtag["OwnerUUID"])) {
+			$this->ownerUUID = UUID::fromString((string) $entity->namedtag["OwnerUUID"]);
 		}
 	}
 
@@ -46,7 +45,7 @@ class TamableComponent extends EntityComponent {
 	 */
 	public function setOwningPlayer(Player $player) {
 		$this->getEntity()->setOwningEntity($player);
-		$this->getEntity()->namedtag->OwnerUUID = new StringTag("OwnerUUID", $player->getUniqueId()->toString());
+		$this->getEntity()->namedtag->OwnerUUID = $player->getUniqueId()->toString();
 		$this->ownerUUID = $player->getUniqueId();
 	}
 

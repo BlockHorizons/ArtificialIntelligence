@@ -21,7 +21,7 @@ use pocketmine\Player;
 
 class Parrot extends FlyingAnimal implements Tamable, Feedable {
 
-	const NETWORK_ID = 10; // Change this to parrot network ID (30) later in 1.2.
+	const NETWORK_ID = 30;
 
 	const FACING_MODE_IDLE = 0;
 	const FACING_MODE_OBSERVE = 1;
@@ -103,6 +103,8 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 					if($player->getUniqueId()->equals($this->getTamableComponent()->getTamerUUID())) {
 						$this->getTamableComponent()->setOwningPlayer($player);
 					}
+					echo "Player UUID: " . $player->getUniqueId()->toString() . PHP_EOL;
+					echo "Owner UUID: " . $this->getTamableComponent()->getTamerUUID()->toString() . PHP_EOL;
 				}
 			}
 			if($this->getOwningEntity() !== null) {
