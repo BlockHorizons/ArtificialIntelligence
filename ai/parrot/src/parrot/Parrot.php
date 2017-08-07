@@ -80,8 +80,6 @@ class Parrot extends FlyingAnimal implements Tamable {
 		if($this->closed) {
 			return false;
 		}
-		$this->timings->startTiming();
-
 		$hasUpdate = parent::entityBaseTick($tickDiff);
 
 		if($this->isAlive()) {
@@ -188,11 +186,7 @@ class Parrot extends FlyingAnimal implements Tamable {
 				}
 			}
 			$this->move($this->motionX, $this->motionY, $this->motionZ);
-			$this->updateMovement();
 		}
-
-		$this->timings->stopTiming();
-
 		return $hasUpdate or !$this->onGround or abs($this->motionX) > 0.00001 or abs($this->motionY) > 0.00001 or abs($this->motionZ) > 0.00001;
 	}
 
