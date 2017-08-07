@@ -129,7 +129,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 				}
 
 				if($this->flyingTicks < 4) {
-					$this->motionY -= $this->gravity * $this->drag * 5 * $tickDiff * $this->motionY;
+					$this->motionY -= $this->motionY * $this->drag * 5 * $tickDiff;
 				}
 				$this->flyingTicks += $tickDiff;
 				$x = $this->x - $this->destination->x;
