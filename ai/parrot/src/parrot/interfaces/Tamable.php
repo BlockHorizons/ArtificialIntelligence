@@ -19,4 +19,14 @@ interface Tamable extends Metadatable {
 	 * @return TamableComponent
 	 */
 	public function getTamableComponent(): TamableComponent;
+
+	/**
+	 * @return bool
+	 */
+	public function isSitting(): bool;
+
+	/**
+	 * @param bool $value
+	 */
+	public function setSitting(bool $value = true);
 }

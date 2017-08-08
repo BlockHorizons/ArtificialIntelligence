@@ -5,8 +5,10 @@ declare(strict_types = 1);
 namespace parrot\components;
 
 use parrot\interfaces\Tamable;
+use parrot\Parrot;
 use pocketmine\entity\Entity;
 use pocketmine\item\Item;
+use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
 use pocketmine\Player;
 use pocketmine\utils\UUID;
@@ -21,8 +23,8 @@ class TamableComponent extends EntityComponent {
 	 */
 	public function __construct(Tamable $entity) {
 		parent::__construct($entity);
-		if(isset($entity->namedtag["OwnerUUID"])) {
-			$this->ownerUUID = UUID::fromString((string) $entity->namedtag["OwnerUUID"]);
+		if(isset($entity->namedtag->OwnerUUID)) {
+			$this->ownerUUID = UUID::fromString($entity->namedtag->OwnerUUID->getValue());
 		}
 	}
 
@@ -30,7 +32,7 @@ class TamableComponent extends EntityComponent {
 	 * @return bool
 	 */
 	public function hasValidUUID(): bool {
-		return $this->ownerUUID !== null;
+		return !empty($this->ownerUUID);
 	}
 
 	/**
@@ -45,7 +47,7 @@ class TamableComponent extends EntityComponent {
 	 */
 	public function setOwningPlayer(Player $player) {
 		$this->getEntity()->setOwningEntity($player);
-		$this->getEntity()->namedtag->OwnerUUID = $player->getUniqueId()->toString();
+		$this->getEntity()->namedtag->OwnerUUID = new StringTag("OwnerUUID", $player->getUniqueId()->toString());
 		$this->ownerUUID = $player->getUniqueId();
 	}
 
@@ -112,6 +114,45 @@ class TamableComponent extends EntityComponent {
 	 * @return bool
 	 */
 	public function toggleTameButton(Player $player): bool {
+		$this->showTameButton($player, !($value = $this->hasTameButton($player)));
+		return $value;
+	}
+
+
+	/**
+	 * @param Player $player
+	 * @param bool   $value
+	 */
+	public function showSitStandButton(Player $player, bool $value = true) {
+		/** @var Parrot $entity */
+		$entity = $this->getEntity();
+		if($this->hasValidUUID()) {
+			if(!$value) {
+				$player->setDataProperty(Entity::DATA_INTERACTIVE_TAG, Entity::DATA_TYPE_STRING, "");
+			} elseif($entity->isSitting()) {
+				$player->setDataProperty(Entity::DATA_INTERACTIVE_TAG, Entity::DATA_TYPE_STRING, "Stand");
+			} else {
+				$player->setDataProperty(Entity::DATA_INTERACTIVE_TAG, Entity::DATA_TYPE_STRING, "Sit");
+			}
+		}
+
+	}
+
+	/**
+	 * @param Player $player
+	 *
+	 * @return bool
+	 */
+	public function hasSitStandButton(Player $player): bool {
+		return $player->getDataProperty(Entity::DATA_INTERACTIVE_TAG) === "Tame";
+	}
+
+	/**
+	 * @param Player $player
+	 *
+	 * @return bool
+	 */
+	public function toggleSitStandButton(Player $player): bool {
 		$this->showTameButton($player, !($value = $this->hasTameButton($player)));
 		return $value;
 	}
