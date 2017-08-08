@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace parrot;
 
 use parrot\components\FeedableComponent;
+use parrot\components\SoundImitatorComponent;
 use parrot\components\TamableComponent;
 use parrot\interfaces\Feedable;
 use parrot\interfaces\Tamable;
@@ -55,15 +56,17 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	private $feedableComponent = null;
 	/** @var TamableComponent */
 	private $tamableComponent = null;
+	/** @var SoundImitatorComponent */
+	private $soundImitatorComponent = null;
 
 	public function initEntity() {
 		parent::initEntity();
 		if(!isset($this->namedtag->Variant)) {
 			$variant = mt_rand(0, 4);
-			$this->setDataProperty(self::DATA_VARIANT, self::DATA_TYPE_BYTE, $variant);
+			$this->setDataProperty(self::DATA_VARIANT, self::DATA_TYPE_INT, $variant);
 			$this->namedtag->Variant = new IntTag("Variant", $variant);
 		} else {
-			$this->setDataProperty(self::DATA_VARIANT, self::DATA_TYPE_BYTE, $this->namedtag->Variant->getValue());
+			$this->setDataProperty(self::DATA_VARIANT, self::DATA_TYPE_INT, $this->namedtag->Variant->getValue());
 		}
 
 		$this->setMaxHealth(6);
@@ -72,6 +75,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 
 		$this->feedableComponent = new FeedableComponent($this);
 		$this->tamableComponent = new TamableComponent($this);
+		$this->soundImitatorComponent = new SoundImitatorComponent($this);
 	}
 
 	/**
@@ -125,9 +129,9 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 				}
 			}
 			if($this->isInsideOfWater()) {
-				$this->motionY += $this->gravity / 4 * $tickDiff;
+				$this->motionY += $this->gravity / 8 * $tickDiff;
 			} elseif($this->isInAir() && !$this->isFlying()) {
-				$this->motionY -= $this->gravity / 10 * $tickDiff;
+				$this->motionY -= $this->gravity / 8 * $tickDiff;
 			}
 
 			if($this->isElevating()) {
@@ -144,16 +148,21 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 				if($this->flyingTicks < 4) {
 					$this->motionY -= $this->motionY * $this->drag * 4 * $tickDiff;
 				}
-				$this->flyingTicks += $tickDiff;
 				list($x, $y, $z) = $this->subtractVector3($this->destination, ($this->isObserving() ? true : false));
-
 				$distance = $this->distance($this->destination);
 				$distanceFlat = sqrt($x * $x + $z * $z);
 
 				if($y > 0 && $this->isObserving()) {
-					$this->motionY = $y * 0.1 * $tickDiff;
+					$this->motionY = $y * $this->drag * $tickDiff;
+				} elseif($this->flyingTicks >= 100) {
+					$this->motionY -= $this->gravity * 4 * $tickDiff;
 				} else {
-					$this->motionY -= $this->gravity * $this->drag * 2 * $tickDiff;
+					$this->motionY = -$this->drag * 0.5;
+				}
+				if($this->isCollidedHorizontally) {
+					if($this->flyingTicks < 30) {
+						$this->motionY += $this->drag * 2;
+					}
 				}
 				$this->motionX = 0.2 * ($x / $distance) * $tickDiff;
 				$this->motionZ = 0.2 * ($z / $distance) * $tickDiff;
@@ -164,6 +173,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 					$this->motionX = 0;
 					$this->motionZ = 0;
 				}
+				$this->flyingTicks += $tickDiff;
 			} else {
 				$this->directionFindTick -= $tickDiff;
 				$this->destination = null;
@@ -172,7 +182,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 					$this->setFlying();
 				} else {
 					if(!$this->isObserving()) {
-						if(mt_rand(1, 60) === 1) {
+						if(mt_rand(1, 50) === 50) {
 							$this->facingMode = ($this->lookingAtPlayer ? self::FACING_MODE_IDLE : self::FACING_MODE_OBSERVE);
 						}
 						$this->pitch = 0;
@@ -191,6 +201,9 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 					} else {
 						list($x, $y, $z) = $this->subtractVector3($this->observedEntity, true);
 						$this->calculateYawPitch($x, $y, $z);
+						if(mt_rand(0, 20) === 20) {
+							$this->soundImitatorComponent->createSoundFor($this->observedEntity);
+						}
 						if($this->distance($this->observedEntity) > 3) {
 							$this->flyTowards($this->observedEntity->asVector3());
 						}
@@ -207,7 +220,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 			}
 
 			if($this->observedEntity !== null) {
-				if(!$this->observedEntity->isAlive() || $this->observedEntity->closed || $this->distance($this->observedEntity) > 20) {
+				if(!$this->observedEntity->isAlive() || $this->observedEntity->closed || $this->distance($this->observedEntity) > 20 || mt_rand(1, 80) === 80) {
 					$this->observedEntity = null;
 				}
 			}
