@@ -65,6 +65,7 @@ class TamableComponent extends EntityComponent {
 		if(mt_rand(0, 3) === 3) {
 			$packet->event = EntityEventPacket::TAME_SUCCESS;
 			$this->setOwningPlayer($tamer);
+			$this->getEntity()->setDataFlag(Entity::DATA_FLAGS, Entity::DATA_FLAG_TAMED, true);
 			$return = true;
 		} else {
 			$packet->event = EntityEventPacket::TAME_FAIL;

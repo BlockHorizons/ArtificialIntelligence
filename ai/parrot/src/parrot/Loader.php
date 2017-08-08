@@ -7,11 +7,15 @@ namespace parrot;
 use parrot\interfaces\Feedable;
 use parrot\interfaces\Tamable;
 use pocketmine\entity\Entity;
+use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\item\Item;
+use pocketmine\math\AxisAlignedBB;
 use pocketmine\network\mcpe\protocol\InteractPacket;
 use pocketmine\network\mcpe\protocol\InventoryTransactionPacket;
+use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 
 class Loader extends PluginBase implements Listener {
@@ -71,6 +75,37 @@ class Loader extends PluginBase implements Listener {
 							}
 							break;
 					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * @param PlayerQuitEvent $event
+	 */
+	public function onQuit(PlayerQuitEvent $event) {
+		$player = $event->getPlayer();
+		$BB = new AxisAlignedBB($player->x - 1, $player->y - 2, $player->z - 1, $player->x + 1, $player->y + 2, $player->z + 1);
+		$entities = $event->getPlayer()->getLevel()->getNearbyEntities($BB, $player);
+		foreach($entities as $entity) {
+			if($entity instanceof Parrot) {
+				$entity->getShoulderSittingComponent()->dumpParrots($player);
+			}
+		}
+	}
+
+
+	/**
+	 * @param EntityDamageEvent $event
+	 */
+	public function onDamage(EntityDamageEvent $event) {
+		$player = $event->getEntity();
+		if($player instanceof Player) {
+			$BB = new AxisAlignedBB($player->x - 1, $player->y - 2, $player->z - 1, $player->x + 1, $player->y + 2, $player->z + 1);
+			$entities = $player->getLevel()->getNearbyEntities($BB, $player);
+			foreach($entities as $entity) {
+				if($entity instanceof Parrot) {
+					$entity->getShoulderSittingComponent()->dumpParrots($player);
 				}
 			}
 		}

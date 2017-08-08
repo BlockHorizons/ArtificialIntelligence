@@ -9,10 +9,6 @@ use pocketmine\Player;
 
 class FeedableComponent extends EntityComponent {
 
-	public function __construct(Feedable $entity) {
-		parent::__construct($entity);
-	}
-
 	/**
 	 * @param Player $feeder
 	 *
