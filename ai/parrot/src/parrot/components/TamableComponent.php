@@ -57,7 +57,7 @@ class TamableComponent extends EntityComponent {
 	 * @return bool
 	 */
 	public function tame(Player $tamer): bool {
-		if(!$this->canBeTamedWith($tamer->getInventory()->getItemInHand()) || $this->hasValidUUID()) {
+		if(!$this->canBeTamedWith($tamer->getInventory()->getItemInHand()) or $this->hasValidUUID()) {
 			return false;
 		}
 		$packet = new EntityEventPacket();
@@ -85,7 +85,7 @@ class TamableComponent extends EntityComponent {
 	public function canBeTamedWith(Item $item): bool {
 		/** @var Entity|Tamable $entity */
 		$entity = $this->getEntity();
-		return $item->getId() === $entity->getTamingItem()->getId() && $item->getDamage() === $entity->getTamingItem()->getDamage() && $item->getCount() >= $entity->getTamingItem()->getCount();
+		return $item->getId() === $entity->getTamingItem()->getId() and $item->getDamage() === $entity->getTamingItem()->getDamage() and $item->getCount() >= $entity->getTamingItem()->getCount();
 	}
 
 	/**
@@ -93,7 +93,7 @@ class TamableComponent extends EntityComponent {
 	 * @param bool   $value
 	 */
 	public function showTameButton(Player $player, bool $value = true) {
-		if($value && !$this->hasValidUUID()) {
+		if($value and !$this->hasValidUUID()) {
 			$player->setDataProperty(Entity::DATA_INTERACTIVE_TAG, Entity::DATA_TYPE_STRING, "Tame");
 		} else {
 			$player->setDataProperty(Entity::DATA_INTERACTIVE_TAG, Entity::DATA_TYPE_STRING, "");

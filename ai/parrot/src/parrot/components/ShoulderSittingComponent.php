@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace parrot\components;
 
 use parrot\Parrot;
@@ -16,12 +18,12 @@ class ShoulderSittingComponent extends EntityComponent {
 	 * @return bool
 	 */
 	public function hasShoulderSpace(Player $player): bool {
-		if(!isset($player->namedtag->LeftShoulderParrot) || !isset($player->namedtag->RightShoulderParrot)) {
+		if(!isset($player->namedtag->LeftShoulderParrot) or !isset($player->namedtag->RightShoulderParrot)) {
 			$player->namedtag->LeftShoulderParrot = new IntTag("LeftShoulder", 0);
 			$player->namedtag->RightShoulderParrot = new IntTag("RightShoulder", 0);
 			return true;
 		}
-		if($this->hasLeftShoulderSpace($player) || $this->hasRightShoulderSpace($player)) {
+		if($this->hasLeftShoulderSpace($player) or $this->hasRightShoulderSpace($player)) {
 			return true;
 		}
 		return false;
@@ -67,10 +69,10 @@ class ShoulderSittingComponent extends EntityComponent {
 		}
 		if($this->hasLeftShoulderSpace($player)) {
 			$player->namedtag->LeftShoulderParrot->setValue($parrot->getId());
-			$parrot->setDataProperty(Entity::DATA_RIDER_SEAT_POSITION, Entity::DATA_TYPE_VECTOR3F, [-0.45, -0.2, 0]);
+			$parrot->setDataProperty(Entity::DATA_RIDER_SEAT_POSITION, Entity::DATA_TYPE_VECTOR3F, [-0.425, -0.15, 0]);
 		} else {
 			$player->namedtag->RightShoulderParrot->setValue($parrot->getId());
-			$parrot->setDataProperty(Entity::DATA_RIDER_SEAT_POSITION, Entity::DATA_TYPE_VECTOR3F, [0.45, -0.2, 0]);
+			$parrot->setDataProperty(Entity::DATA_RIDER_SEAT_POSITION, Entity::DATA_TYPE_VECTOR3F, [0.425, -0.15, 0]);
 		}
 		return true;
 	}
@@ -93,7 +95,7 @@ class ShoulderSittingComponent extends EntityComponent {
 			$player->getId(),
 			$parrot->getId(),
 			1,
-			0
+			2
 		];
 		$parrot->riding = true;
 		$parrot->getLevel()->getServer()->broadcastPacket($parrot->getLevel()->getServer()->getOnlinePlayers(), $packet);
@@ -106,7 +108,7 @@ class ShoulderSittingComponent extends EntityComponent {
 	 * @return bool
 	 */
 	public function dumpParrots(Player $player): bool {
-		if($this->hasLeftShoulderSpace($player) && $this->hasRightShoulderSpace($player)) {
+		if($this->hasLeftShoulderSpace($player) and $this->hasRightShoulderSpace($player)) {
 			return false;
 		}
 		if(!$this->hasLeftShoulderSpace($player)) {
@@ -117,7 +119,7 @@ class ShoulderSittingComponent extends EntityComponent {
 				$player->getId(),
 				$idLeft,
 				0,
-				0
+				2
 			];
 			$player->getLevel()->getServer()->broadcastPacket($player->getLevel()->getServer()->getOnlinePlayers(), $packet);
 			if(!$this->hasRightShoulderSpace($player)) {
@@ -130,12 +132,16 @@ class ShoulderSittingComponent extends EntityComponent {
 				$parrot = $player->getLevel()->getEntity($parrotId);
 				$parrot->setSitting(false);
 				$parrot->riding = false;
+				$parrot->teleportToOwner();
 			}
 			$player->namedtag->LeftShoulderParrot->setValue(0);
 			$player->namedtag->RightShoulderParrot->setValue(0);
 
 			return true;
 		}
+		$player->namedtag->LeftShoulderParrot->setValue(0);
+		$player->namedtag->RightShoulderParrot->setValue(0);
+
 		return false;
 	}
 }

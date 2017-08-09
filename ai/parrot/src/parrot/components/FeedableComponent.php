@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace parrot\components;
 
 use parrot\interfaces\Feedable;
@@ -63,6 +65,6 @@ class FeedableComponent extends EntityComponent {
 	public function canBeFedWith(Item $item): bool {
 		/** @var Entity|Feedable $entity */
 		$entity = $this->getEntity();
-		return $item->getId() === $entity->getFeedingItem()->getId() && $item->getDamage() === $entity->getFeedingItem()->getDamage() && $item->getCount() >= $entity->getFeedingItem()->getCount();
+		return $item->getId() === $entity->getFeedingItem()->getId() and $item->getDamage() === $entity->getFeedingItem()->getDamage() and $item->getCount() >= $entity->getFeedingItem()->getCount();
 	}
 }

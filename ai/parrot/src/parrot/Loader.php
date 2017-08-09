@@ -7,9 +7,11 @@ namespace parrot;
 use parrot\interfaces\Feedable;
 use parrot\interfaces\Tamable;
 use pocketmine\entity\Entity;
-use pocketmine\event\entity\EntityDamageEvent;
+use pocketmine\event\entity\EntityDeathEvent;
 use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerDeathEvent;
 use pocketmine\event\player\PlayerQuitEvent;
+use pocketmine\event\player\PlayerToggleSneakEvent;
 use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\item\Item;
 use pocketmine\math\AxisAlignedBB;
@@ -37,11 +39,11 @@ class Loader extends PluginBase implements Listener {
 			$player = $event->getPlayer();
 			$entity = $event->getPlayer()->getLevel()->getEntity($packet->target);
 			if($packet->action === $packet::ACTION_MOUSEOVER) {
-				if($entity instanceof Feedable && $entity->getFeedableComponent()->canBeFedWith($player->getInventory()->getItemInHand())) {
+				if($entity instanceof Feedable and $entity->getFeedableComponent()->canBeFedWith($player->getInventory()->getItemInHand())) {
 					$entity->getFeedableComponent()->showFeedButton($player);
-				} elseif($entity instanceof Tamable && $entity->getTamableComponent()->canBeTamedWith($player->getInventory()->getItemInHand())) {
+				} elseif($entity instanceof Tamable and $entity->getTamableComponent()->canBeTamedWith($player->getInventory()->getItemInHand())) {
 					$entity->getTamableComponent()->showTameButton($player);
-				} elseif($entity instanceof Tamable && $entity->getTamableComponent()->hasValidUUID()) {
+				} elseif($entity instanceof Tamable and $entity->getTamableComponent()->hasValidUUID()) {
 					$entity->getTamableComponent()->showSitStandButton($player);
 				} else {
 					$player->setDataProperty(Entity::DATA_INTERACTIVE_TAG, Entity::DATA_TYPE_STRING, "");
@@ -81,33 +83,38 @@ class Loader extends PluginBase implements Listener {
 	}
 
 	/**
-	 * @param PlayerQuitEvent $event
+	 * @param Player $player
 	 */
-	public function onQuit(PlayerQuitEvent $event) {
-		$player = $event->getPlayer();
-		$BB = new AxisAlignedBB($player->x - 1, $player->y - 2, $player->z - 1, $player->x + 1, $player->y + 2, $player->z + 1);
-		$entities = $event->getPlayer()->getLevel()->getNearbyEntities($BB, $player);
+	public function throwParrotsOff(Player $player) {
+		$BB = new AxisAlignedBB($player->x - 2, $player->y - 3, $player->z - 2, $player->x + 2, $player->y + 3, $player->z + 2);
+		$entities = $player->getLevel()->getNearbyEntities($BB, $player);
 		foreach($entities as $entity) {
 			if($entity instanceof Parrot) {
 				$entity->getShoulderSittingComponent()->dumpParrots($player);
+				break;
 			}
 		}
 	}
 
 
 	/**
-	 * @param EntityDamageEvent $event
+	 * @param EntityDeathEvent $event
 	 */
-	public function onDamage(EntityDamageEvent $event) {
-		$player = $event->getEntity();
-		if($player instanceof Player) {
-			$BB = new AxisAlignedBB($player->x - 1, $player->y - 2, $player->z - 1, $player->x + 1, $player->y + 2, $player->z + 1);
-			$entities = $player->getLevel()->getNearbyEntities($BB, $player);
-			foreach($entities as $entity) {
-				if($entity instanceof Parrot) {
-					$entity->getShoulderSittingComponent()->dumpParrots($player);
-				}
-			}
-		}
+	public function onDeath(PlayerDeathEvent $event) {
+		$this->throwParrotsOff($event->getPlayer());
+	}
+
+	/**
+	 * @param PlayerQuitEvent $event
+	 */
+	public function onQuit(PlayerQuitEvent $event) {
+		$this->throwParrotsOff($event->getPlayer());
+	}
+
+	/**
+	 * @param PlayerToggleSneakEvent $event
+	 */
+	public function onSneak(PlayerToggleSneakEvent $event) {
+		$this->throwParrotsOff($event->getPlayer());
 	}
 }
