@@ -108,6 +108,7 @@ class ShoulderSittingComponent extends EntityComponent {
 	 * @return bool
 	 */
 	public function dumpParrots(Player $player): bool {
+		$this->hasShoulderSpace($player);
 		if($this->hasLeftShoulderSpace($player) and $this->hasRightShoulderSpace($player)) {
 			return false;
 		}

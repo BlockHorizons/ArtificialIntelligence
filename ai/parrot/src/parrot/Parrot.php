@@ -58,6 +58,15 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	private $shoulderSittingComponent = null;
 	/** @var bool */
 	public $riding = false;
+	/** @var bool */
+	private $attacked = false;
+
+	/** @var bool */
+	private $hasFallInitialized = false;
+	/** @var null|Vector3 */
+	private $fallRotationPoint = null;
+	/** @var float */
+	private $fallRotationDegree = 0.0;
 
 	public function initEntity() {
 		parent::initEntity();
@@ -75,14 +84,16 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 		}
 		$this->setMaxHealth(6);
 		$this->setHealth(6);
-		$this->directionFindTick = mt_rand(30, 80);
+		$this->directionFindTick = random_int(20, 50);
 
 		$this->feedableComponent = new FeedableComponent($this);
 		$this->tamableComponent = new TamableComponent($this);
 		$this->shoulderSittingComponent = new ShoulderSittingComponent($this);
 		if($this->getTamableComponent()->hasValidUUID()) {
-			$this->setDataFlag(self::DATA_FLAGS, self::DATA_FLAG_TAMED, true);
+			$this->setGenericFlag(self::DATA_FLAG_TAMED, true);
 		}
+		$this->setGenericFlag(self::DATA_FLAG_IMMOBILE, false);
+		$this->onGround = true;
 	}
 
 	public function saveNBT() {
@@ -94,22 +105,21 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 * @param float             $damage
 	 * @param EntityDamageEvent $source
 	 */
-	public function attack($damage, EntityDamageEvent $source) {
+	public function attack(EntityDamageEvent $source) {
 		if($source->getCause() === $source::CAUSE_FALL or $this->riding) {
 			$source->setCancelled();
 		}
-		parent::attack($damage, $source);
+		parent::attack($source);
 		if($source->isCancelled()){
 			return;
 		}
-		if($source instanceof EntityDamageByEntityEvent){
-			$source->setKnockback(0);
-			$this->motionX = $this->motionZ = 0;
+		if($source instanceof EntityDamageByEntityEvent) {
 			$this->generateNewDirection();
 			$this->setFlying();
 			if($this->isSitting()) {
 				$this->setSitting(false);
 			}
+			$this->attacked = true;
 		}
 	}
 
@@ -118,7 +128,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 *
 	 * @return bool
 	 */
-	public function entityBaseTick($tickDiff = 1) {
+	public function entityBaseTick(int $tickDiff = 1): bool {
 		if($this->closed) {
 			return false;
 		}
@@ -144,72 +154,110 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 			}
 			if($this->isInsideOfWater()) {
 				$this->motionY += $this->gravity / 8 * $tickDiff;
+				$this->hasFallInitialized = false;
 			} elseif($this->isInAir() and !$this->isFlying()) {
-				$this->motionY -= $this->gravity / 8 * $tickDiff;
+
+				if(!$this->hasFallInitialized) {
+					$this->hasFallInitialized = true;
+					$combinedValue = $this->getDirectionVector()->x + $this->getDirectionVector()->z;
+					$this->fallRotationPoint = $this->add($combinedValue, 0, $combinedValue);
+					$this->fallRotationDegree = $this->yaw - 45;
+				}
+				$this->fallRotationPoint = $this->fallRotationPoint->add($this->randomFloat() * 0.04, 0, $this->randomFloat() * 0.04);
+				$this->motionY = -$this->drag * 2;
+				$x = cos(deg2rad($this->fallRotationDegree) * 1.4) + $this->fallRotationPoint->x;
+				$z = sin(deg2rad($this->fallRotationDegree) * 1.4) + $this->fallRotationPoint->z;
+
+				$this->yaw = $this->fallRotationDegree;
+				$this->yaw += 80;
+				$this->pitch = 0;
+				$this->motionX = $x - $this->x;
+				$this->motionZ = $z - $this->z;
+
+				if($this->fallRotationDegree === 360) {
+					$this->fallRotationDegree = 0;
+				}
+				$this->fallRotationDegree += 2;
+			} else {
+				$this->hasFallInitialized = false;
 			}
 
 			if($this->isElevating()) {
-
-				$this->motionY += $this->gravity * $this->drag * 1.1 * $tickDiff;
+				if(!$this->attacked) {
+					$this->motionY += $this->gravity * $this->drag * 1.1 * $tickDiff;
+				} else {
+					$this->motionY -= $this->motionY * ($this->gravity * random_int(4, 8)) * $tickDiff;
+				}
 				if($this->elevatingTicks > 40) {
 					$this->elevating = false;
 				}
 				$this->elevatingTicks += $tickDiff;
 
 			} elseif($this->isFlying()) {
-
+				$this->hasFallInitialized = false;
+				$this->attacked = false;
 				if($this->destination === null) {
-					$this->setFlying(false);
+					$this->motionY -= $this->gravity / 2;
 					return true;
 				}
-				if($this->flyingTicks < mt_rand(2, 4)) {
-					$this->motionY -= $this->motionY * $this->drag * 4 * $tickDiff;
+				if($this->flyingTicks < 4) {
+					$this->motionY -= $this->motionY / 5 * $tickDiff;
 				}
 				list($x, $y, $z) = $this->subtractVector3($this->destination, ($this->isObserving() ? true : false));
+				$this->motionX = 0.15 * ($x / $this->distance($this->destination)) * $tickDiff;
+				$this->motionZ = 0.15 * ($z / $this->distance($this->destination)) * $tickDiff;
+
 				if($y < 0 and $this->isObserving()) {
 					$this->motionY = $y * $this->drag * $tickDiff;
 				} elseif($this->flyingTicks >= 100) {
-					$this->motionY = -$this->gravity / 2 * $tickDiff;
-					$this->motionX /= 3;
-					$this->motionZ /= 3;
+					$this->motionY = -$this->gravity / 2.5 * $tickDiff;
+					$this->motionX /= 5;
+					$this->motionZ /= 5;
+					$this->setFlying(false);
 				} elseif(!$this->isCollidedHorizontally) {
-					$this->motionY = -$this->drag * 0.5;
+					if(($this->motionY -= $this->drag / 2) < -$this->drag / 2) {
+						$this->motionY = -$this->drag / 2;
+					}
 				} else {
 					if($this->flyingTicks < 30) {
-						$this->motionY += $this->drag * 4;
+						$this->motionY += $this->drag * 2 * $tickDiff;
 					} else {
-						$this->motionY -= $this->drag * 2;
-						$this->setFlying(false);
-						return true;
+						if($this->isCollidedVertically) {
+							$this->yaw += 180;
+						}
+						$this->motionY = -$this->drag * 2;
 					}
 				}
-				$this->motionX = 0.2 * ($x / $this->distance($this->destination)) * $tickDiff;
-				$this->motionZ = 0.2 * ($z / $this->distance($this->destination)) * $tickDiff;
 				$this->calculateYawPitch($x, $y, $z);
 				$this->pitch = 0;
 
 				if($this->isOnGround() or sqrt($x * $x + $z * $z) <= 0.3) {
-					$this->setFlying(false);
 					$this->motionX = $this->motionZ = 0;
-					$this->motionY -= $this->gravity * 2 * $tickDiff;
+					if(!$this->isOnGround()) {
+						$this->motionY -= $this->gravity * 2 * $tickDiff;
+					} else {
+						$this->motionY = 0;
+						$this->setFlying(false);
+					}
 				}
 				$this->flyingTicks += $tickDiff;
 
 			} elseif(!$this->isObserving()) {
 
 				$this->directionFindTick -= $tickDiff;
-				if($this->directionFindTick <= 0) {
-					$this->generateNewDirection();
-					$this->setFlying();
-				}
-				if(mt_rand(1, 50) === 50) {
+				if(random_int(1, 80) === 1 && $this->isOnGround()) {
 					$this->facingMode = ((bool) $this->facingMode ? self::FACING_MODE_IDLE : self::FACING_MODE_OBSERVE);
 					if($this->facingMode === self::FACING_MODE_IDLE) {
-						$this->yaw = $this->yaw + mt_rand(-30, 30);
+						$this->yaw += random_int(-30, 30);
 						$this->pitch = 0;
 					}
 				}
-				if($this->facingMode === self::FACING_MODE_OBSERVE) {
+				if($this->directionFindTick <= 0 && $this->isOnGround()) {
+					$this->generateNewDirection();
+					$this->setFlying();
+					$this->facingMode = self::FACING_MODE_IDLE;
+				}
+				if($this->facingMode === self::FACING_MODE_OBSERVE && $this->isOnGround()) {
 					$nearbyParrots = [];
 					$target = null;
 					$facingModified = false;
@@ -264,9 +312,22 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 					$this->riding = false;
 				}
 			}
+			if($this->isOnGround()) {
+				$this->motionX = $this->motionZ = 0;
+			}
 			$this->move($this->motionX, $this->motionY, $this->motionZ);
 		}
 		return $hasUpdate or !$this->onGround or abs($this->motionX) > 0.00001 or abs($this->motionY) > 0.00001 or abs($this->motionZ) > 0.00001;
+	}
+
+	/**
+	 * @return float
+	 */
+	public function randomFloat(): float {
+		if((bool) random_int(0, 1)) {
+			return lcg_value();
+		}
+		return -lcg_value();
 	}
 
 	/**
@@ -340,7 +401,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 */
 	public function flyTowards(Vector3 $vector3) {
 		$this->setFlying();
-		$degree = mt_rand(1, 360);
+		$degree = random_int(1, 360);
 
 		$xOffset = lcg_value() * 3;
 		$zOffset = lcg_value() * 3;
@@ -357,7 +418,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 			return false;
 		}
 		$vector3 = $this->getOwningEntity()->asVector3();
-		$degree = mt_rand(1, 360);
+		$degree = random_int(1, 360);
 		$x = (cos(deg2rad($degree))) * 2 + $vector3->x;
 		$z = (sin(deg2rad($degree))) * 2 + $vector3->z;
 		$this->teleport(new Vector3($x, $vector3->y + 1, $z));
@@ -394,9 +455,9 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 		if($this->directionFindTick > 0) {
 			return false;
 		}
-		$this->directionFindTick = mt_rand(100, 400);
+		$this->directionFindTick = random_int(100, 300);
 		if($this->isObserving()) {
-			$this->directionFindTick = mt_rand(10, 30);
+			$this->directionFindTick = random_int(10, 30);
 		}
 		$flyDistance = 12;
 		$x = random_int(-12, 12);
@@ -409,14 +470,14 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 * @param bool $value
 	 */
 	public function setDancing(bool $value = true) {
-		$this->setDataFlag(self::DATA_FLAGS, 48, $value); // TODO: Replace by constant.
+		$this->setGenericFlag(48, $value); // TODO: Replace by constant.
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isDancing(): bool {
-		return $this->getDataFlag(self::DATA_FLAGS, 48); // TODO: Replace by constant.
+		return $this->getGenericFlag(48); // TODO: Replace by constant.
 	}
 
 	/**
@@ -431,7 +492,7 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 */
 	public function getDrops(): array {
 		return [
-			Item::get(Item::FEATHER, 0, mt_rand(1, 2))
+			Item::get(Item::FEATHER, 0, random_int(1, 2))
 		];
 	}
 
@@ -477,14 +538,14 @@ class Parrot extends FlyingAnimal implements Tamable, Feedable {
 	 * @return bool
 	 */
 	public function isSitting(): bool {
-		return $this->getDataFlag(self::DATA_FLAGS, self::DATA_FLAG_SITTING);
+		return $this->getGenericFlag(self::DATA_FLAG_SITTING);
 	}
 
 	/**
 	 * @param bool $value
 	 */
 	public function setSitting(bool $value = true) {
-		$this->setDataFlag(self::DATA_FLAGS, self::DATA_FLAG_SITTING, $value);
+		$this->setGenericFlag(self::DATA_FLAG_SITTING, $value);
 	}
 
 	/**

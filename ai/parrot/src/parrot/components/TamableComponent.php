@@ -32,7 +32,7 @@ class TamableComponent extends EntityComponent {
 	 * @return bool
 	 */
 	public function hasValidUUID(): bool {
-		return !empty($this->ownerUUID);
+		return $this->ownerUUID !== null;
 	}
 
 	/**
@@ -62,7 +62,7 @@ class TamableComponent extends EntityComponent {
 		}
 		$packet = new EntityEventPacket();
 		$packet->entityRuntimeId = $this->getEntity()->getId();
-		if(mt_rand(0, 3) === 3) {
+		if(random_int(0, 3) === 3) {
 			$packet->event = EntityEventPacket::TAME_SUCCESS;
 			$this->setOwningPlayer($tamer);
 			$this->getEntity()->setDataFlag(Entity::DATA_FLAGS, Entity::DATA_FLAG_TAMED, true);
